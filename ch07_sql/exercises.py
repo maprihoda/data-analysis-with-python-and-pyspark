@@ -267,4 +267,39 @@ answer_sql = spark.sql(
 answer_sql.count()
 
 # %%
-answer_sql.show(5)
+answer_sql.show()
+
+# %%
+# This is enough to clean the data, no need to join the grouped subquery, since the windows function already sorts by capacity_bytes desc.
+
+answer_sql = spark.sql(
+    """
+    WITH
+    full_data_windowed
+    AS
+    (
+        SELECT *,
+			ROW_NUMBER () OVER
+                (
+                    PARTITION BY model
+                    ORDER BY capacity_bytes DESC
+                ) AS row_number
+        FROM full_data
+        WHERE capacity_bytes > 0
+    )
+    -- SELECT *
+    SELECT
+        model,
+        capacity_bytes,
+        date,
+        failure,
+        row_number
+    FROM full_data_windowed
+    WHERE row_number = 1
+    """
+)
+
+answer_sql.show()
+
+# %%
+answer_sql.count()
